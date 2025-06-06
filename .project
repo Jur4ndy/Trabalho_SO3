@@ -14,4 +14,11 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>src/tSO3/StringTeste.txt</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/Downloads/StringTeste.txt</locationURI>
+		</link>
+	</linkedResources>
 </projectDescription>
