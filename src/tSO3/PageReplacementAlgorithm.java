@@ -4,112 +4,6 @@ import java.io.IOException;
 import java.util.*;
 
 
-public class PageReplacementAlgorithm {
-	
-	public static void main(String[] args) {
-		PageReplacementAlgorithm p = new PageReplacementAlgorithm();
-		p.addProcesses("/home/ju/Downloads/StringTeste.txt");
-		System.out.println("open console");
-		p.simulateFIFO();
-		p.simulateLRU();
-		p.simulateSecondChance();
-	}
-	
-	LinkedList<PageInfo> pages = new LinkedList<PageInfo>();
-
-	
-	public PageReplacementAlgorithm() {
-		
-	}
-	
-	public void addProcesses(String text) {
-		try {
-			File file = new File(text);
-			Scanner scan = new Scanner(file);
-			String line = scan.nextLine();
-			String[] processesData = line.split(";");
-			String[] pageData;
-			int time = 0;
-			
-			for (String data : processesData) {   
-				 pageData = data.split(",");
-				 pages.add(new PageInfo(Integer.parseInt(pageData[0]), Integer.parseInt(pageData[1])));
-				 System.out.println(Integer.parseInt(pageData[0]) + ", " + Integer.parseInt(pageData[1]));
-				 time++;
-			}
-			System.out.println(scan.hasNext());
-			System.out.println("pages added: " + time);
-			scan.close();
-		}
-		catch(IOException erro) {
-			System.out.println("ERROR! file not found");
-		}
-	}
-	
-	public void simulateFIFO() {
-		Memory mem = new Memory();
-		int time = 0;
-		int pageFaults = 0;
-		for(PageInfo info : pages) {
-			if (mem.frames.size() < 8000 && !mem.frames.contains(info)) {
-				mem.addPage(new Page(info, time));
-				//System.out.println("Page added: " + mem.frames. size());
-			}
-			else if (!mem.frames.contains(info)){
-				mem.replaceFIFO(new Page(info, time));
-				pageFaults++;
-				//System.out.println(pageFaults);
-			}
-			time++;
-		}
-		System.out.println("time elapsed = " + time);
-		System.out.println("FIFO page faults = " + pageFaults);
-	}
-	
-	public void simulateLRU() {
-		Memory mem = new Memory();
-		int time = 0;
-		int pageFaults = 0;
-		for(PageInfo info : pages) {
-			if (mem.size < 8000) mem.addPage(new Page(info, time));
-			else {
-					int index = mem.indexOf(info);
-					if (index > -1) mem.refreshLRU(time, index);
-					
-					else {
-						mem.replaceLRU(new Page(info, time));
-						pageFaults++;
-					}
-			}
-			time++;
-		}
-		System.out.println("time elapsed = " + time);
-		System.out.println("LRU page faults = " + pageFaults);
-	}
-
-	public void simulateSecondChance() {
-		Memory mem = new Memory();
-		int time = 0;
-		int pageFaults = 0;
-		for(PageInfo info : pages) {
-			if (mem.frames.size() < 8000) mem.addPage(new Page(info, time));
-			else {
-				int index = mem.indexOf(info);
-				if (index > -1) mem.refreshSecondChance(time, index);
-				
-				else {
-					mem.replaceSecondChance(new Page(info, time));
-					pageFaults++;
-				}
-			}
-			time++;
-		}
-		System.out.println("time elapsed = " + time);
-		System.out.println("Second Chance page faults = " + pageFaults);
-	}
-	
-
-}
 class PageInfo {
 	int process;
 	int id;
@@ -119,6 +13,11 @@ class PageInfo {
 		this.id = id;
 	}
 	
+	public boolean equals(PageInfo info) {
+		if (this == info) return true;
+	    if (info == null) return false;
+	    return process == info.process && id == info.id;
+	}
 	
 }
 
@@ -145,6 +44,8 @@ class Page {
 
 
 class Memory {
+	public int MAX_ARRAY_SIZE;
+
 	
 	//null elements 
 	LinkedList<Page> frames = new LinkedList<Page>();
@@ -152,8 +53,8 @@ class Memory {
 	int size = 0;
 
 	
-	public Memory() {
-
+	public Memory(int max_size) {
+		MAX_ARRAY_SIZE = max_size;
 	}
 	
 	public boolean contains(PageInfo info) {
@@ -173,11 +74,7 @@ class Memory {
 	}
 	
 	public void refreshLRU(int time, int index) {
-		Page p = frames.get(index);
-		frames.remove(index);
-		p.lastUsed = time;
-		frames.add(p);
-		
+		frames.get(index).lastUsed = time;		
 	}
 	
 	public void refreshSecondChance(int time, int index) {
@@ -187,7 +84,7 @@ class Memory {
 	
 	public void addPage(Page page) {
 		//always check if there's free space on the array before doing this!!!! 
-		if (size < 8000) {
+		if (size < MAX_ARRAY_SIZE) {
 			frames.add(page);
 			size++;
 		}
@@ -205,8 +102,23 @@ class Memory {
 	}
 	
 	public void replaceLRU(Page page) {
-		frames.remove(0);
-		frames.add(page);
+		int min = Integer.MAX_VALUE;
+		int index = -1;
+		int aux = 0;
+		for (Page frame : frames) {
+			if (frame.lastUsed < min) {
+				min = frame.lastUsed;
+				index = aux;
+			}
+			aux++;
+		}
+		try {
+			frames.remove(index);
+			frames.add(page);
+		}
+		catch(Exception e) {
+			System.out.println(e);
+		}
 	}
 	
 	public void replaceSecondChance(Page page) {
@@ -229,6 +141,131 @@ class Memory {
 	}
 
 }
+
+public class PageReplacementAlgorithm {
+	int max_size;
+
+	public PageReplacementAlgorithm(int max_size) {
+		this.max_size = max_size;
+	}
+	
+	public void addProcesses(String text) {
+		try {
+			File file = new File(text);
+			Scanner scan = new Scanner(file);
+			String line = scan.nextLine();
+			String[] processesData = line.split(";");
+			String[] pageData;
+			PageInfo breakPoint = new PageInfo(0, 0);
+			int time = 0;
+			
+			for (String data : processesData) {   
+				 pageData = data.split(",");
+				 PageInfo p = new PageInfo(Integer.parseInt(pageData[0]), Integer.parseInt(pageData[1]));
+				 if (p.equals(breakPoint)) break;
+				 pages.add(p);
+				 //System.out.println(Integer.parseInt(pageData[0]) + ", " + Integer.parseInt(pageData[1]));
+				 time++;
+			}
+			System.out.println("pages added: " + time);
+			scan.close();
+		}
+		catch(IOException erro) {
+			System.out.println("ERROR! file not found");
+		}
+	}
+	
+	public void simulateFIFO() {
+		Memory mem = new Memory(max_size);
+		int time = 0;
+		int pageFaults = 0;
+		for(PageInfo info : pages) {
+			if (mem.frames.size() < mem.MAX_ARRAY_SIZE && !mem.contains(info)) {
+				mem.addPage(new Page(info, time));
+				pageFaults++;
+				//System.out.println("Page added: " + mem.frames. size());
+			}
+			else if (!mem.contains(info)){
+				mem.replaceFIFO(new Page(info, time));
+				pageFaults++;
+				//System.out.println(pageFaults + " at time: " + time + ". For pageInfo: " + info.process + ", " + info.id);
+			}
+			time++;
+		}
+		System.out.println("FIFO page faults = " + pageFaults);
+	}
+	
+	public void simulateLRU() {
+		Memory mem = new Memory(max_size);
+		int time = 0;
+		int pageFaults = 0;
+		for(PageInfo info : pages) {
+			if (mem.size < mem.MAX_ARRAY_SIZE) {
+				mem.addPage(new Page(info, time));
+				pageFaults++;
+			}
+			else {
+					int index = mem.indexOf(info);
+					if (index > -1) mem.refreshLRU(time, index);
+					
+					else {
+						mem.replaceLRU(new Page(info, time));
+						pageFaults++;
+						//System.out.println(pageFaults + " at time: " + time + ". For pageInfo: " + info.process + ", " + info.id);
+
+					}
+			}
+			time++;
+		}
+		System.out.println("LRU page faults = " + pageFaults);
+	}
+
+	public void simulateSecondChance() {
+		Memory mem = new Memory(max_size);
+		int time = 0;
+		int pageFaults = 0;
+		for(PageInfo info : pages) {
+			if (mem.frames.size() < mem.MAX_ARRAY_SIZE) {
+				mem.addPage(new Page(info, time));
+				pageFaults++;
+			}
+			else {
+				int index = mem.indexOf(info);
+				if (index > -1) mem.refreshSecondChance(time, index);
+				
+				else {
+					mem.replaceSecondChance(new Page(info, time));
+					pageFaults++;
+					//System.out.println(pageFaults + " at time: " + time + ". For pageInfo: " + info.process + ", " + info.id);
+				}
+			}
+			time++;
+		}
+		System.out.println("Second Chance page faults = " + pageFaults);
+	}
+	
+	public static void main(String[] args) {
+		System.out.println("Teste: 3 de memoria");
+		PageReplacementAlgorithm p3 = new PageReplacementAlgorithm(3);
+		p3.addProcesses("/home/ju/eclipse-workspace/Trabalho_SO3/src/tSO3/StringTeste_short");
+		p3.simulateFIFO();
+		p3.simulateLRU();
+		p3.simulateSecondChance();
+		System.out.println();
+		
+		System.out.println("Teste: 8000 de memoria");
+		PageReplacementAlgorithm p = new PageReplacementAlgorithm(8000);
+		p.addProcesses("/home/ju/Downloads/StringTeste.txt");
+		p.simulateFIFO();
+		p.simulateLRU();
+		p.simulateSecondChance();
+	}
+	
+	LinkedList<PageInfo> pages = new LinkedList<PageInfo>();
+	
+
+}
+
 
 //class MemoryArray {
 //	
