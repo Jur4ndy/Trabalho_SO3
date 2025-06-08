@@ -14,9 +14,8 @@ class PageInfo {
 	}
 	
 	public boolean equals(PageInfo info) {
-		if (this == info) return true;
 	    if (info == null) return false;
-	    return process == info.process && id == info.id;
+	    return (process == info.process && id == info.id);
 	}
 	
 }
@@ -74,11 +73,12 @@ class Memory {
 	}
 	
 	public void refreshLRU(int time, int index) {
+		//look for a page and set its last used to the current time
 		frames.get(index).lastUsed = time;		
 	}
 	
-	public void refreshSecondChance(int time, int index) {
-		//look for a page and set its last used to the current time
+	public void refreshSecondChance(int index) {
+		//look for a page and set secondChance to true
 		frames.get(index).secondChance = true;
 	}
 	
@@ -92,6 +92,7 @@ class Memory {
 	}
 	
 	public void replacePage(int target, Page page) {
+		//just remove the first element of the memory, it will always be the First in
 		frames.remove(target);
 		frames.add(target, page);
 	}
@@ -105,6 +106,7 @@ class Memory {
 		int min = Integer.MAX_VALUE;
 		int index = -1;
 		int aux = 0;
+		//Look for the least recently used
 		for (Page frame : frames) {
 			if (frame.lastUsed < min) {
 				min = frame.lastUsed;
@@ -200,7 +202,7 @@ public class PageReplacementAlgorithm {
 		int time = 0;
 		int pageFaults = 0;
 		for(PageInfo info : pages) {
-			if (mem.size < mem.MAX_ARRAY_SIZE) {
+			if (mem.size < mem.MAX_ARRAY_SIZE && !mem.contains(info)) {
 				mem.addPage(new Page(info, time));
 				pageFaults++;
 			}
@@ -225,13 +227,13 @@ public class PageReplacementAlgorithm {
 		int time = 0;
 		int pageFaults = 0;
 		for(PageInfo info : pages) {
-			if (mem.frames.size() < mem.MAX_ARRAY_SIZE) {
+			if (mem.frames.size() < mem.MAX_ARRAY_SIZE && !mem.contains(info)) {
 				mem.addPage(new Page(info, time));
 				pageFaults++;
 			}
 			else {
 				int index = mem.indexOf(info);
-				if (index > -1) mem.refreshSecondChance(time, index);
+				if (index > -1) mem.refreshSecondChance(index);
 				
 				else {
 					mem.replaceSecondChance(new Page(info, time));
@@ -245,17 +247,12 @@ public class PageReplacementAlgorithm {
 	}
 	
 	public static void main(String[] args) {
-		System.out.println("Teste: 3 de memoria");
-		PageReplacementAlgorithm p3 = new PageReplacementAlgorithm(3);
-		p3.addProcesses("/home/ju/eclipse-workspace/Trabalho_SO3/src/tSO3/StringTeste_short");
-		p3.simulateFIFO();
-		p3.simulateLRU();
-		p3.simulateSecondChance();
+		Scanner scan =  new Scanner(System.in);
+		System.out.print("Insisira aqui o caminho para o arquivo de texto: ");
+		String file = scan.nextLine();
 		System.out.println();
-		
-		System.out.println("Teste: 8000 de memoria");
 		PageReplacementAlgorithm p = new PageReplacementAlgorithm(8000);
-		p.addProcesses("/home/ju/Downloads/StringTeste.txt");
+		p.addProcesses(file);
 		p.simulateFIFO();
 		p.simulateLRU();
 		p.simulateSecondChance();
